@@ -6,17 +6,18 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/v2"
 	"github.com/rs/zerolog"
-	"github.com/knadh/koanf/providers/env"
 )
 
 type Config struct {
-	Primary  Primary        `koanf:"primary" validate:"required"`
-	Server   ServerConfig   `koanf:"server" validate:"required"`
-	Database DatabaseConfig `koanf:"database" validate:"required"`
-	Auth     AuthConfig     `koanf:"auth" validate:"required"`
-	Redis    RedisConfig    `koanf:"redis" validate:"required"`
+	Primary       Primary              `koanf:"primary" validate:"required"`
+	Server        ServerConfig         `koanf:"server" validate:"required"`
+	Database      DatabaseConfig       `koanf:"database" validate:"required"`
+	Auth          AuthConfig           `koanf:"auth" validate:"required"`
+	Redis         RedisConfig          `koanf:"redis" validate:"required"`
+	Integration   IntegrationConfig    `koanf:"integration" validate:"required"`
 	Observability *ObservabilityConfig `koanf:"observability"`
 }
 
@@ -32,21 +33,24 @@ type ServerConfig struct {
 	CORSAllowedOrigins []string `koanf:"cors_allowed_origins" validate:"required"`
 }
 
-type RedisConfig struct {
-	Address string `koanf:"address" validate:"required"`
-}
-
 type DatabaseConfig struct {
 	Host            string `koanf:"host" validate:"required"`
 	Port            int    `koanf:"port" validate:"required"`
 	User            string `koanf:"user" validate:"required"`
-	Password        string `koanf:"password" validate:"required"`
+	Password        string `koanf:"password"`
 	Name            string `koanf:"name" validate:"required"`
 	SSLMode         string `koanf:"ssl_mode" validate:"required"`
 	MaxOpenConns    int    `koanf:"max_open_conns" validate:"required"`
 	MaxIdleConns    int    `koanf:"max_idle_conns" validate:"required"`
 	ConnMaxLifetime int    `koanf:"conn_max_lifetime" validate:"required"`
-	ConnMaxIdleTime int    `koanf:"conn_max_idle" validate:"required"`
+	ConnMaxIdleTime int    `koanf:"conn_max_idle_time" validate:"required"`
+}
+type RedisConfig struct {
+	Address string `koanf:"address" validate:"required"`
+}
+
+type IntegrationConfig struct {
+	ResendAPIKey string `koanf:"resend_api_key" validate:"required"`
 }
 
 type AuthConfig struct {
@@ -61,12 +65,12 @@ func LoadConfig() (*Config, error) {
 	err := k.Load(env.Provider("BOILERPLATE_", ".", func(s string) string {
 		return strings.ToLower(strings.TrimPrefix(s, "BOILERPLATE_"))
 	}), nil)
-
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not load initial env variables")
 	}
 
 	mainConfig := &Config{}
+
 	err = k.Unmarshal("", mainConfig)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not unmarshal main config")
@@ -79,18 +83,19 @@ func LoadConfig() (*Config, error) {
 		logger.Fatal().Err(err).Msg("config validation failed")
 	}
 
-	// set default observability config if not provided
-	if mainConfig.Observability == nil{
+	// Set default observability config if not provided
+	if mainConfig.Observability == nil {
 		mainConfig.Observability = DefaultObservabilityConfig()
 	}
 
-	// Override service name and enviroment from primary config
+	// Override service name and environment from primary config
 	mainConfig.Observability.ServiceName = "boilerplate"
 	mainConfig.Observability.Environment = mainConfig.Primary.Env
 
-	// validate observability config
-	if err := mainConfig.Observability.Validate(); err != nil{
+	// Validate observability config
+	if err := mainConfig.Observability.Validate(); err != nil {
 		logger.Fatal().Err(err).Msg("invalid observability config")
 	}
+
 	return mainConfig, nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/newrelic/go-agent/v3/integrations/nrpgx5"
 	"github.com/rs/zerolog"
 	"github.com/saadanzarii/go-boilerplate/internal/config"
-	loggerConfig "github.com/saadanzarii/go-boilerplate/internal/config"
+	loggerConfig "github.com/saadanzarii/go-boilerplate/internal/logger"
 )
 
 type Database struct {
